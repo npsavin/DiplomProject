@@ -23,8 +23,7 @@ namespace ExpertSystem.Logic
         public List<PrecedentFormVector> GetNormalForm()
         {
             var stopWords =
-                File.ReadAllText(@"E:\Users\Nikita\OneDrive\Documents\Study\Diplom\MyProject\ExpertSystem\ExpertSystem\StopWords.txt"
-                    ).Split(default(char[]), StringSplitOptions.RemoveEmptyEntries);
+                MyLibForNeo4J.GetCollectionByType("StopWord");
             using (var client = new WebClient())
             {
                 var values = new NameValueCollection();

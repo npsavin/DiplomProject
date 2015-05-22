@@ -10,6 +10,11 @@
        
     }
 
+    public class StopWord : MainCreater
+    {
+        
+    }
+
     public class KeyWord : MainCreater
     {
         public double weight { get; set; }

@@ -225,7 +225,8 @@ namespace ExpertSystem
         //    return stringforReturn;
         protected void Button5_Click(object sender, EventArgs e)
         {
-            File.AppendAllText(@"E:\Users\Nikita\OneDrive\Documents\Study\Diplom\MyProject\ExpertSystem\ExpertSystem\StopWords.txt", " " + TextBox20.Text.ToLower());
+           MyLibForNeo4J.CreateStopWord(TextBox20.Text.ToLower());
+            TextBox20.Text = "Выполнено";
         }
     }
 

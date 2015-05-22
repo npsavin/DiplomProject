@@ -17,7 +17,19 @@ namespace ExpertSystem.Logic
                 Client.Connect();
             }
         }
+        public static void CreateStopWord(string timeName)
+        {
+            ClientConnect();
+            var forRequest = "(n:" + "StopWord" + ")";
+            var timeId = Client.Cypher.Match(forRequest).Return(n => n.As<string>()).Results.Count();
+            var mn = new StopWord() { id = timeId, name = timeName };
+            var stringForCreate = "(n:" + "StopWord" + "{mn})";
+            Client.Cypher
+                  .Create(stringForCreate)
+                  .WithParam("mn", mn)
+                  .ExecuteWithoutResults();
 
+        }
         public static List<string> GetCollectionByType(string type)
         {
             ClientConnect();
