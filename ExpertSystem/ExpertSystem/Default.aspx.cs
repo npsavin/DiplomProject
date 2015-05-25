@@ -15,7 +15,9 @@ namespace ExpertSystem
 {
     public partial class Default : Page
     {
+       
         public int IdPrecedent { get; set; }
+        public int StartPrecedent { get; set; }
 
         // В четверг.
         // Связаться с Матвеем.
@@ -24,7 +26,7 @@ namespace ExpertSystem
         // 30 апреля. Текст сделать. 
         protected void Page_Load(object sender, EventArgs e)
         {
-
+            StartPrecedent = 0;
         }
 
 
@@ -35,13 +37,26 @@ namespace ExpertSystem
             TextBox7.TextMode = TextBoxMode.MultiLine;
             GetNormalFormPrecedent newPrecedent = new GetNormalFormPrecedent(TextBox1.Text);
             var normalForm = newPrecedent.GetNormalForm();
-            var vectorDictionary = normalForm.ToDictionary(vector => vector.name, vector => vector.weight);
-            var sortDictionary = vectorDictionary.Where(x => x.Value == vectorDictionary.Values.Max());
-            for (var i = 0; i < Math.Min(normalForm.Count, 10); i++)
+            var vectorDictionary = new Dictionary<string, double>();
+            foreach (var vector in normalForm)
             {
-                if (!sortDictionary.ElementAt(i).Key.IsNullOrWhiteSpace())
+                if (vectorDictionary.ContainsKey(vector.name))
                 {
-                    sb.AppendLine(sortDictionary.ElementAt(i).Key.ToLower());
+                    vectorDictionary[vector.name] += vector.weight;
+                }
+                else
+                {
+                    vectorDictionary.Add(vector.name, vector.weight);
+                }
+
+            }
+            var sortDictionary = vectorDictionary.OrderByDescending(pair => pair.Value).ToDictionary(pair => pair.Key, pair => pair.Value);
+            //var sortDictionary = vectorDictionary.Where(x => x.Value == vectorDictionary.Values.Max());
+            for (var i = 0; i < Math.Min(normalForm.LongCount(), 10); i++)
+            {
+                if(!sortDictionary.ElementAt(i).Key.IsNullOrWhiteSpace())
+                {
+                    sb.AppendLine(sortDictionary.ElementAt(i).Key.Trim().ToLower());
                 }
             }
             TextBox7.Text = sb.ToString();
@@ -56,7 +71,6 @@ namespace ExpertSystem
             var filename = FileUpload1.FileContent;
             StreamReader str = new StreamReader(filename);
             var text = str.ReadToEnd();
-            text = text.Trim().Remove(0, text.IndexOf("\n", StringComparison.Ordinal));
 
             //if (filename == null) throw new ArgumentNullException("sender");
             //var token = JObject.Parse(text);
@@ -100,7 +114,7 @@ namespace ExpertSystem
             //    stringBuilder.AppendLine(loose);
             //    TextBox1.Text = stringBuilder.ToString();
             //    stringBuilder.Clear();
-            TextBox1.Text = TextBox7.Text = TranslateYa.TranslateInYandex(text);
+            TextBox1.Text = TranslateYa.TranslateInYandex(text);
 
         }
 
@@ -151,7 +165,7 @@ namespace ExpertSystem
             IdPrecedent = idPrecedent;
             var idsKeyWord = finalList.Select(keyWord => MyLibForNeo4J.CreateKeyWord(keyWord.name, keyWord.weight)).ToList();
             MyLibForNeo4J.ConnectKeyWordsWithParametr(idsKeyWord, idPrecedent);
-            Response.Redirect("page.aspx?IdPrecedent=" + IdPrecedent);
+            Server.Transfer("Ontology.aspx");
 
             //var idPrecedent = MyLibForNeo4J.CreateNode("Precedent", ChangeSubstring("Precedent"));
             //var idSymptom = MyLibForNeo4J.CreateNode("Symptom", ChangeSubstring("Symptom"));

@@ -20,7 +20,7 @@ namespace ExpertSystem.Logic
             _textOfPrecedent = textOfPrecedent;
         }
 
-        public List<PrecedentFormVector> GetNormalForm()
+        public IEnumerable<PrecedentFormVector> GetNormalForm()
         {
             var stopWords =
                 MyLibForNeo4J.GetCollectionByType("StopWord");
@@ -54,43 +54,69 @@ namespace ExpertSystem.Logic
                         bool flag = !el.IsNullOrWhiteSpace();
                         foreach (var stopword in stopWords)
                         {
-                            if (stopword == timeName.ToLower())
+                            if (timeName != null && stopword == timeName.ToLower())
                             {
                                 flag = false;
                             }
-                            if (flag)
-                            {
-                                ListWithCount.Add(new PrecedentFormVector() { name = timeName.ToLower(), weight = timeWeight });
-                            }
+                           
+                        }
+                        if (flag)
+                        {
+                            ListWithCount.Add(new PrecedentFormVector() { name = timeName.ToLower(), weight = timeWeight });    
                         }
                         
                     }
                     i++;
                 }
-                var listWithTf = MakeTF(ListWithCount);
+                var listWithTf = MakeTF(ListWithCount.Distinct());
                 var listWithTFIDF = MakeTFIDF(listWithTf);
                 return listWithTFIDF;
             }
         }
 
-        public List<PrecedentFormVector> NormalFormAfterExpertEdit(string keyWordOfExpert, List<PrecedentFormVector> analitic)
+        public IEnumerable<PrecedentFormVector> NormalFormAfterExpertEdit(string keyWordOfExpert, IEnumerable<PrecedentFormVector> analitic)
         {
             var keyWords = keyWordOfExpert.Split(default(char[]), StringSplitOptions.RemoveEmptyEntries);
-            var vectorDictionary = analitic.ToDictionary(vector => vector.name, vector => vector.weight);
-            var sortDictionary = vectorDictionary.Where(x => x.Value == vectorDictionary.Values.Max());
+            var vectorDictionary = new Dictionary<string, double>();
+            foreach (var vector in analitic)
+            {
+                if (vectorDictionary.ContainsKey(vector.name))
+                {
+                    vectorDictionary[vector.name] += vector.weight;
+                }
+                else
+                {
+                    vectorDictionary.Add(vector.name, vector.weight);
+                }
+
+            }
+            var sortDictionary = vectorDictionary.OrderByDescending(pair => pair.Value).ToDictionary(pair => pair.Key, pair => pair.Value);
             var maxWeith = sortDictionary.First().Value;
-            var listForReturn = keyWords.Where(keyWord => !vectorDictionary.ContainsKey(keyWord.ToLower())).Select(keyWord => new PrecedentFormVector() {name = keyWord.ToLower(), weight = maxWeith}).ToList();
-            for (var i = 0; i <= Math.Min(analitic.Count, 10); i++)
+            //var listForReturn = keyWords.Where(keyWord => !vectorDictionary.ContainsKey(keyWord.ToLower())).Select(keyWord => new PrecedentFormVector() {name = keyWord.ToLower(), weight = maxWeith}).ToList();
+            for (int i = 0; i < Math.Min(sortDictionary.Count, 10); i++)
             {
-                listForReturn.AddRange(keyWords.Where(keyword => keyword.ToLower() == sortDictionary.ElementAt(i).Key).Select(keyword => new PrecedentFormVector() { name = sortDictionary.ElementAt(i).Key, weight = sortDictionary.ElementAt(i).Value }));
+                if (!keyWords.Contains(sortDictionary.ElementAt(i).Key))
+                {
+                    sortDictionary[sortDictionary.ElementAt(i).Key] = 0;
+                }
             }
-            for (var i = Math.Min(analitic.Count, 10); i <= analitic.Count; i++)
+            foreach (var el in keyWords)
             {
-                listForReturn.Add(new PrecedentFormVector() { name = sortDictionary.ElementAt(i).Key, weight = sortDictionary.ElementAt(i).Value });
+                if (!sortDictionary.ContainsKey(el))
+                {
+                    sortDictionary.Add(el, maxWeith);
+                }
+                else
+                {
+                    if (sortDictionary[el] < sortDictionary.ElementAt(Math.Max(10, sortDictionary.Count)).Value)
+                    {
+                        sortDictionary[el] = maxWeith;
+                    }
+                }
             }
-            return listForReturn;
+            return sortDictionary.Select(el => new PrecedentFormVector() {name = el.Key, weight = el.Value}).ToList();
         }
-        private static List<PrecedentFormVector> MakeTF(List<PrecedentFormVector> list)
+        private static IEnumerable<PrecedentFormVector> MakeTF(IEnumerable<PrecedentFormVector> list)
         {
             var summ = list.Sum(el => el.weight);
             foreach (var el in list)
@@ -100,20 +126,22 @@ namespace ExpertSystem.Logic
             return list;
         }
 
-        private static List<PrecedentFormVector> MakeTFIDF(List<PrecedentFormVector> list)
+        private static IEnumerable<PrecedentFormVector> MakeTFIDF(IEnumerable<PrecedentFormVector> list)
         {
             double countOfPrecedent = MyLibForNeo4J.GetCollectionByType("Precedent").Count;
-            List<PrecedentFormVector> listForReturn = list;
+            var listOfAllKeyWord = MyLibForNeo4J.GetCollectionByType("KeyWord");
+            IEnumerable<PrecedentFormVector> listForReturn = list;
             
             foreach (var el in listForReturn)
             {
                var lower =  el.name.ToLower();
-               double countOfPrecedentWithThisKeyWord = MyLibForNeo4J.GetCollectionByTypeAndName("KeyWord", lower).Count;
-                if (countOfPrecedentWithThisKeyWord == 0)
+                double countOfPrecedentWithThisKeyWord = listOfAllKeyWord.FindAll(
+                    st => st == lower).Count;
+                if (countOfPrecedentWithThisKeyWord == 0.0)
                 {
                     countOfPrecedentWithThisKeyWord = 1;
                 }
-                el.weight = Math.Log((countOfPrecedent/countOfPrecedentWithThisKeyWord));
+                el.weight = el.weight * Math.Abs(Math.Log((countOfPrecedent/countOfPrecedentWithThisKeyWord)));
             }
             return listForReturn;
         }

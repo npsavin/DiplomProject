@@ -1,7 +1,10 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Net;
+using System.Runtime.InteropServices.ComTypes;
 using System.Text;
+using xNet.Text;
 
 namespace ExpertSystem.Logic
 {
@@ -16,8 +19,19 @@ namespace ExpertSystem.Logic
             string textForOut = null;
             var text = textOfPrecedent.Substring(0, Math.Min(9000, textOfPrecedent.Length));
             var strigBuilder = new StringBuilder();
-            text = text.Replace("&", "%26");
+            
+            
+            text = text.Replace("&", "");
             text = text.Replace(";", "");
+            text = text.Replace("*", "");
+            text = text.Replace("#", "");
+            if (text.Contains("http") && text.Contains("https"))
+            {
+                var fordelete = text.Substrings("http://", "\n");
+                var fordelete2 = text.Substrings("https://", "\n");
+                text = fordelete.Aggregate(text, (current, el) => current.Replace("http://" + el, ""));
+                text = fordelete2.Aggregate(text, (current, el) => current.Replace("https://" + el, ""));
+            }
             strigBuilder.Append("&text=" + text);
             strigBuilder.Append("&lang=en-ru");
             strigBuilder.Append("&format=json");

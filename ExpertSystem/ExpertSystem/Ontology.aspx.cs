@@ -17,11 +17,41 @@ namespace ExpertSystem
     {
 
         public int PrecedentId { get; set; }
+        public Util ThisClassPrecedent { get; set; }
+        
         protected void Page_Load(object sender, EventArgs e)
 
         {
-            PrecedentId = Convert.ToInt32(Request.QueryString["PrecedentId"]);
-            TextBox1.Text = PrecedentId.ToString();
+            PrecedentId = PreviousPage.IdPrecedent;
+            ThisClassPrecedent = Classification.ClassificationThisPrecedent(PrecedentId, 0);
+            var textbox2 = new StringBuilder();
+            TextBox2.TextMode = TextBoxMode.MultiLine;
+            if (ThisClassPrecedent.positiveClass.Count == 1)
+            {
+                textbox2.AppendLine("Ваш прецедент был успешно классифифцирован к классу с именем: ");
+                textbox2.AppendLine(MyLibForNeo4J.GetName(ThisClassPrecedent.positiveClass.FirstOrDefault(),
+                    "ClassPrecedent"));
+                textbox2.AppendLine("Были ещё варианты");
+                foreach (var el in ThisClassPrecedent.negativeClass)
+                {
+                    textbox2.AppendLine(MyLibForNeo4J.GetName(el, "ClassPrecedent"));
+                }
+                TextBox2.Text = textbox2.ToString();
+                textbox2.Clear();
+            }else if (!ThisClassPrecedent.positiveClass.Any())
+            {
+                textbox2.AppendLine(
+                    "Классификатор не смог определить класс, на определённом шаге" +
+                    " Вам необходимо ввести название класса вручную.");
+                textbox2.AppendLine("Возможные варианты:");
+                foreach (var el in ThisClassPrecedent.negativeClass)
+                {
+                    textbox2.AppendLine(MyLibForNeo4J.GetName(el, "ClassPrecedent"));
+                }
+            }
+
+
+
 
         }
 
@@ -29,30 +59,29 @@ namespace ExpertSystem
 
         protected void Yes_click(object sender, EventArgs e)
         {
+            MyLibForNeo4J.ConnectTwoNodes(PrecedentId, "Precedent", ThisClassPrecedent.positiveClass.FirstOrDefault(), "ClassPrecedent", "In");
+            UpdateCentroidAfterAddNewPrecedent.SetCentroidForList(PrecedentId);
+
         }
 
         protected void Button3_Click(object sender, EventArgs e)
         {
-
-            //var node = MyLibForNeo4J.CreateNode("Class" + _list[_counter], TextBox1.Text);
-            //var timeElement = MyLibForNeo4J.GetAllIdNodesConnectionWithThisNodeRight(IdPrecedent, "Precedent", _list[_counter], "Parameter").FirstOrDefault(); ;
-            //var collectKeyWord = MyLibForNeo4J.GetAllNameNodesConnectionWithThisNodeLeft(timeElement, _list[_counter], "KeyWord", "KeyWordIn");
-            //var idList = collectKeyWord.Select(el => MyLibForNeo4J.CreateNode("KeyWordOf" + _list[_counter], el)).ToList();
-            
-            //foreach (var el in idList)
-            //{
-            //    MyLibForNeo4J.ConnectTwoNodes(el, "KeyWordOf" + _list[_counter], timeElement, "Class" + _list[_counter], "IN");
-            //}
-
-            //MyLibForNeo4J.ConnectTwoNodes((int)idClassOfType, "Class" + _list[_counter], node, "Class" + _list[_counter], "IS_KIND_OF");
-
-            //_counter++;
-            //LoadPage(_counter);
+            var classId = MyLibForNeo4J.CreateClass(TextBox1.Text, 0, 1);
+            PreviousPage.StartPrecedent = classId;
         }
 
-        private void LoadPage(int count)
+        protected void Button4_Click(object sender, EventArgs e)
         {
+           var classChosedExpert = MyLibForNeo4J.GetCollectionByTypeAndName("ClassPrecedent", TextBox3.Text);
+           var distance = Classification.GetDistance(PrecedentId, classChosedExpert.FirstOrDefault());
+           var maxDistance = MyLibForNeo4J.GetMaxDistanceInClass(classChosedExpert.FirstOrDefault());
+            if (distance > maxDistance)
+            {
+                MyLibForNeo4J.SetMaxDistanceInClass(classChosedExpert.FirstOrDefault(), distance);
+            }
+           PreviousPage.StartPrecedent = classChosedExpert.FirstOrDefault();
+
         }
-        
+
     }
 }

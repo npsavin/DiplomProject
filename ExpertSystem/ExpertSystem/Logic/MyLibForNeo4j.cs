@@ -40,7 +40,19 @@ namespace ExpertSystem.Logic
             
         }
 
-        public static List<string> GetCollectionByTypeAndName(string type, string name)
+        public static double GetMaxDistanceInClass(int id)
+        {
+            ClientConnect();
+            var stringForConnect = "(node:ClassPrecedent)";
+            var forReturn = Client.Cypher
+                .Match(stringForConnect)
+                .Where((ClassPrecedent node) => node.id == id)
+                .Return(node => node.As<ClassPrecedent>())
+                .Results;
+            var listNodeOfTypeAndName = forReturn.Select(el => el.maxdistance).ToList();
+            return listNodeOfTypeAndName.FirstOrDefault();
+        }
+        public static List<int> GetCollectionByTypeAndName(string type, string name)
         {
             ClientConnect();
             var stringForConnect = "(node:" + type + ")";
@@ -49,9 +61,20 @@ namespace ExpertSystem.Logic
                 .Where((MainCreater node) => node.name == name)
                 .Return(node => node.As<MainCreater>())
                 .Results;
-            var listNodeOfTypeAndName = forReturn.Select(el => el.name).ToList();
+            var listNodeOfTypeAndName = forReturn.Select(el => el.id).ToList();
             return listNodeOfTypeAndName;
         }
+
+        public static void SetMaxDistanceInClass(int id, double distance)
+        {
+            Client.Cypher
+                .Match("(n:User)")
+                .Where((ClassPrecedent n) => n.id == id)
+                .Set("n.maxdistance = {maxdistance}")
+                .WithParam("maxdistance", distance)
+                .ExecuteWithoutResults();
+        }
+
         public static List<string> GetCollectionByTypeAndId(string type, int id)
         {
             ClientConnect();
@@ -152,6 +175,23 @@ namespace ExpertSystem.Logic
 
 
             var mn = new KeyWord(){id = timeId, name = timeName, weight = weight};
+            var stringForCreate = "(n:" + "KeyWord" + "{mn})";
+            Client.Cypher
+                  .Create(stringForCreate)
+                  .WithParam("mn", mn)
+                  .ExecuteWithoutResults();
+
+            return timeId;
+        }
+        public static int CreateClass(string timeName, double maxDistanceweight, int countOfPrecedent)
+        {
+            ClientConnect();
+            var forRequest = "(n:" + "ClassPrecedent" + ")";
+            var timeId = Client.Cypher.Match(forRequest).Return(n => n.As<string>()).Results.Count();
+
+
+
+            var mn = new ClassPrecedent() { id = timeId, name = timeName, maxdistance = maxDistanceweight, countOfPrecedent = 1};
             var stringForCreate = "(n:" + "KeyWord" + "{mn})";
             Client.Cypher
                   .Create(stringForCreate)
